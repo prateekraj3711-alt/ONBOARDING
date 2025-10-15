@@ -100,13 +100,28 @@ def verify_slack_request(request_data, timestamp, signature):
 def parse_name_email(text):
     """
     Parse the text parameter to extract name and email.
-    Expected format: "John Doe john@example.com"
+    Handles both plain text and Slack's mailto format.
     """
     if not text or not text.strip():
         return None, None
     
-    # Remove extra whitespace and split
-    parts = text.strip().split()
+    # Remove bot mention from text first
+    mention_pattern = r'<@[A-Z0-9]+>\s*'
+    clean_text = re.sub(mention_pattern, '', text).strip()
+    
+    # Handle Slack's mailto format: <mailto:email@domain.com|email@domain.com>
+    mailto_pattern = r'<mailto:([^|>]+)\|[^>]+>'
+    mailto_match = re.search(mailto_pattern, clean_text)
+    
+    if mailto_match:
+        email = mailto_match.group(1)
+        # Remove the mailto part to get the name
+        name_text = re.sub(mailto_pattern, '', clean_text).strip()
+        name = name_text if name_text else None
+        return name, email
+    
+    # Fallback to original parsing for plain text
+    parts = clean_text.split()
     
     if len(parts) < 2:
         return None, None
@@ -251,13 +266,8 @@ def events():
                 
                 log_request("BOT_MENTIONED", f"Text: {text}, User: {user}, Channel: {channel}")
                 
-                # Remove bot mention from text
-                # Text looks like: "<@U1234567890> John Doe john@example.com"
-                mention_pattern = r'<@[A-Z0-9]+>\s*'
-                clean_text = re.sub(mention_pattern, '', text).strip()
-                
-                # Parse name and email
-                name, email = parse_name_email(clean_text)
+                # Parse name and email (mention removal is handled in parse_name_email)
+                name, email = parse_name_email(text)
                 
                 if not name or not email:
                     response_text = "❌ Invalid format. Please use: `@onboarding-bot John Doe john@example.com`"
