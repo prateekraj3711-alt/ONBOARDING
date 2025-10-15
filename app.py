@@ -189,10 +189,8 @@ def send_email(name, email, package=None):
         msg['To'] = email
         msg['Subject'] = "Welcome to SpringWorks"
         
-        # Email body
-        body = f"""Hi {name},
-
-Welcome aboard! We're thrilled to have you with us.
+        # Email body - start directly with welcome message
+        body = f"""Welcome aboard! We're thrilled to have you with us.
 
 {f"Your package ({package}) is active!" if package else "Your account is now active!"}
 
@@ -268,7 +266,7 @@ def send_standard_onboarding_email():
     """
     try:
         # You can customize these default values
-        default_name = "New Team Member"
+        default_name = "New Member"
         default_email = "hr@springworks.in"  # Change this to your HR email
         default_package = "Standard Package"
         
@@ -279,7 +277,7 @@ def send_standard_onboarding_email():
         msg = MIMEMultipart()
         msg['From'] = GMAIL_USER
         msg['To'] = default_email
-        msg['Subject'] = "Welcome to SpringWorks - New Team Member Onboarded"
+        msg['Subject'] = "Welcome to SpringWorks - New Member Onboarded"
         
         # Email body
         body = f"""Hi Team,
@@ -452,6 +450,11 @@ def events():
                 # Parse name, email, and package details for custom messages
                 name, email, package = parse_slack_message(text)
                 print(f"DEBUG: Parsed - Name: '{name}', Email: '{email}', Package: '{package}'")
+                
+                # Clean up name if it contains unwanted text
+                if name and ("Client email" in name or "Package details" in name):
+                    print(f"DEBUG: Cleaning up name from '{name}' to 'New Member'")
+                    name = "New Member"
                 
                 if not name or not email:
                     response_text = "❌ Invalid format. Please use: `@onboarding-bot - onboarded` or `@onboarding-bot John Doe john@example.com Premium Package`"
