@@ -262,6 +262,100 @@ The Team"""
         return False
 
 
+def send_standard_onboarding_email():
+    """
+    Send a standard onboarding email to a default recipient.
+    """
+    try:
+        # You can customize these default values
+        default_name = "New Team Member"
+        default_email = "hr@springworks.in"  # Change this to your HR email
+        default_package = "Standard Package"
+        
+        log_request("SENDING_STANDARD_EMAIL", f"To: {default_name} ({default_email})")
+        print(f"DEBUG: Starting standard email send to {default_name} ({default_email})")
+        
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = GMAIL_USER
+        msg['To'] = default_email
+        msg['Subject'] = "Welcome to SpringWorks - New Team Member Onboarded"
+        
+        # Email body
+        body = f"""Hi Team,
+
+A new team member has been successfully onboarded!
+
+Welcome aboard! We're thrilled to have them with us.
+
+Their package ({default_package}) is active!
+
+Please ensure they have access to all necessary systems and resources.
+
+Best,
+The SpringWorks Team"""
+        
+        msg.attach(MIMEText(body, 'plain'))
+        print(f"DEBUG: Standard email message created")
+        
+        # Try different SMTP configurations
+        smtp_configs = [
+            {'host': 'smtp.gmail.com', 'port': 465, 'use_ssl': True, 'use_tls': False},
+            {'host': 'smtp.gmail.com', 'port': 587, 'use_ssl': False, 'use_tls': True},
+            {'host': 'smtp.gmail.com', 'port': 25, 'use_ssl': False, 'use_tls': True},
+        ]
+        
+        for config in smtp_configs:
+            try:
+                print(f"DEBUG: Trying {config['host']}:{config['port']} (SSL: {config['use_ssl']}, TLS: {config['use_tls']})")
+                
+                with smtp_lock:
+                    if config['use_ssl']:
+                        # Use SSL
+                        server = smtplib.SMTP_SSL(config['host'], config['port'])
+                        print(f"DEBUG: SSL connection established")
+                    else:
+                        # Use TLS
+                        server = smtplib.SMTP(config['host'], config['port'])
+                        print(f"DEBUG: SMTP connection established")
+                        
+                        if config['use_tls']:
+                            server.starttls()
+                            print(f"DEBUG: TLS started")
+                    
+                    print(f"DEBUG: Attempting login with user: {GMAIL_USER}")
+                    server.login(GMAIL_USER, GMAIL_PASS)
+                    print(f"DEBUG: Login successful")
+                    
+                    # Send email
+                    text = msg.as_string()
+                    print(f"DEBUG: Sending standard email...")
+                    server.sendmail(GMAIL_USER, default_email, text)
+                    print(f"DEBUG: Standard email sent successfully")
+                    
+                    server.quit()
+                    print(f"DEBUG: SMTP connection closed")
+                    
+                    log_request("STANDARD_EMAIL_SENT_SUCCESS", f"To: {default_name} ({default_email})")
+                    return True
+                    
+            except Exception as e:
+                print(f"DEBUG: Failed with {config['host']}:{config['port']} - {str(e)}")
+                continue
+        
+        # If all configurations failed
+        error_msg = "All SMTP configurations failed for standard email"
+        log_request("STANDARD_EMAIL_SEND_FAILED", f"Error: {error_msg} | To: {default_name} ({default_email})")
+        print(f"DEBUG: {error_msg}")
+        return False
+        
+    except Exception as e:
+        error_msg = f"Unexpected error in standard email: {str(e)}"
+        log_request("STANDARD_EMAIL_SEND_FAILED", f"Error: {error_msg} | To: {default_name} ({default_email})")
+        print(f"DEBUG: {error_msg}")
+        return False
+
+
 def send_slack_message(channel, text):
     """
     Send a message to a Slack channel.
@@ -343,11 +437,22 @@ def events():
                 
                 log_request("BOT_MENTIONED", f"Text: {text}, User: {user}, Channel: {channel}")
                 
-                # Parse name, email, and package details
+                # Check for simple onboard command
+                if "- onboarded" in text.lower() or "onboarded" in text.lower():
+                    # Send standard onboarding email
+                    if send_standard_onboarding_email():
+                        response_text = "✅ Standard onboarding email sent to the team!"
+                        send_slack_message(channel, response_text)
+                    else:
+                        response_text = "❌ Failed to send onboarding email. Please try again or contact support."
+                        send_slack_message(channel, response_text)
+                    return jsonify({"status": "ok"})
+                
+                # Parse name, email, and package details for custom messages
                 name, email, package = parse_slack_message(text)
                 
                 if not name or not email:
-                    response_text = "❌ Invalid format. Please use: `@onboarding-bot John Doe john@example.com Premium Package`"
+                    response_text = "❌ Invalid format. Please use: `@onboarding-bot - onboarded` or `@onboarding-bot John Doe john@example.com Premium Package`"
                     send_slack_message(channel, response_text)
                     return jsonify({"status": "ok"})
                 
