@@ -436,6 +436,7 @@ def events():
                         processed_events.clear()
                 
                 log_request("BOT_MENTIONED", f"Text: {text}, User: {user}, Channel: {channel}")
+                print(f"DEBUG: Raw text received: '{text}'")
                 
                 # Check for simple onboard command
                 if "- onboarded" in text.lower() or "onboarded" in text.lower():
@@ -450,6 +451,7 @@ def events():
                 
                 # Parse name, email, and package details for custom messages
                 name, email, package = parse_slack_message(text)
+                print(f"DEBUG: Parsed - Name: '{name}', Email: '{email}', Package: '{package}'")
                 
                 if not name or not email:
                     response_text = "❌ Invalid format. Please use: `@onboarding-bot - onboarded` or `@onboarding-bot John Doe john@example.com Premium Package`"
