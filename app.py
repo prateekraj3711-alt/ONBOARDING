@@ -157,10 +157,11 @@ def validate_email_format(email):
 
 def send_email(name, email):
     """
-    Send onboarding email via Gmail SMTP.
+    Send onboarding email via Gmail SMTP with multiple port attempts.
     """
     try:
         log_request("SENDING_EMAIL", f"To: {name} ({email})")
+        print(f"DEBUG: Starting email send to {name} ({email})")
         
         # Create message
         msg = MIMEMultipart()
@@ -179,24 +180,63 @@ Best,
 The Team"""
         
         msg.attach(MIMEText(body, 'plain'))
+        print(f"DEBUG: Email message created")
         
-        # Use thread-safe SMTP connection
-        with smtp_lock:
-            # Connect to Gmail SMTP server
-            server = smtplib.SMTP('smtp.gmail.com', 587)
-            server.starttls()  # Enable TLS encryption
-            server.login(GMAIL_USER, GMAIL_PASS)
-            
-            # Send email
-            text = msg.as_string()
-            server.sendmail(GMAIL_USER, email, text)
-            server.quit()
+        # Try different SMTP configurations
+        smtp_configs = [
+            {'host': 'smtp.gmail.com', 'port': 465, 'use_ssl': True, 'use_tls': False},
+            {'host': 'smtp.gmail.com', 'port': 587, 'use_ssl': False, 'use_tls': True},
+            {'host': 'smtp.gmail.com', 'port': 25, 'use_ssl': False, 'use_tls': True},
+        ]
         
-        log_request("EMAIL_SENT_SUCCESS", f"To: {name} ({email})")
-        return True
+        for config in smtp_configs:
+            try:
+                print(f"DEBUG: Trying {config['host']}:{config['port']} (SSL: {config['use_ssl']}, TLS: {config['use_tls']})")
+                
+                with smtp_lock:
+                    if config['use_ssl']:
+                        # Use SSL
+                        server = smtplib.SMTP_SSL(config['host'], config['port'])
+                        print(f"DEBUG: SSL connection established")
+                    else:
+                        # Use TLS
+                        server = smtplib.SMTP(config['host'], config['port'])
+                        print(f"DEBUG: SMTP connection established")
+                        
+                        if config['use_tls']:
+                            server.starttls()
+                            print(f"DEBUG: TLS started")
+                    
+                    print(f"DEBUG: Attempting login with user: {GMAIL_USER}")
+                    server.login(GMAIL_USER, GMAIL_PASS)
+                    print(f"DEBUG: Login successful")
+                    
+                    # Send email
+                    text = msg.as_string()
+                    print(f"DEBUG: Sending email...")
+                    server.sendmail(GMAIL_USER, email, text)
+                    print(f"DEBUG: Email sent successfully")
+                    
+                    server.quit()
+                    print(f"DEBUG: SMTP connection closed")
+                    
+                    log_request("EMAIL_SENT_SUCCESS", f"To: {name} ({email})")
+                    return True
+                    
+            except Exception as e:
+                print(f"DEBUG: Failed with {config['host']}:{config['port']} - {str(e)}")
+                continue
+        
+        # If all configurations failed
+        error_msg = "All SMTP configurations failed"
+        log_request("EMAIL_SEND_FAILED", f"Error: {error_msg} | To: {name} ({email})")
+        print(f"DEBUG: {error_msg}")
+        return False
         
     except Exception as e:
-        log_request("EMAIL_SEND_FAILED", f"Error: {str(e)} | To: {name} ({email})")
+        error_msg = f"Unexpected error: {str(e)}"
+        log_request("EMAIL_SEND_FAILED", f"Error: {error_msg} | To: {name} ({email})")
+        print(f"DEBUG: {error_msg}")
         return False
 
 
