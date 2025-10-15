@@ -298,9 +298,12 @@ def onboard():
             
     except Exception as e:
         log_request(user_name, "UNEXPECTED_ERROR", f"Error: {str(e)}")
+        print(f"DEBUG: Full error details: {str(e)}")
+        print(f"DEBUG: Request data: {request_data}")
+        print(f"DEBUG: Headers: {dict(request.headers)}")
         return jsonify({
             "response_type": "ephemeral",
-            "text": "❌ An unexpected error occurred. Please try again or contact support."
+            "text": f"❌ An unexpected error occurred: {str(e)}"
         }), 500
 
 
@@ -337,4 +340,4 @@ if __name__ == '__main__':
     print("Ready to handle multiple concurrent users!")
     print("=" * 60)
     
-    app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=PORT, debug=True, threaded=True)
