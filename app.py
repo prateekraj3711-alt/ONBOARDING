@@ -177,8 +177,8 @@ def health_check():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     """
-    Handle webhook requests from Slack.
-    Expects JSON data with 'text' field containing "name email"
+    Handle webhook requests from Slack Workflow.
+    Expects JSON data with structured fields from workflow form.
     """
     try:
         log_request("WEBHOOK_RECEIVED", f"Headers: {dict(request.headers)}")
@@ -190,17 +190,37 @@ def webhook():
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
         
-        # Extract text from webhook data
-        text = data.get('text', '')
-        if not text:
-            return jsonify({"error": "No text field in webhook data"}), 400
+        # Extract name and email from workflow data
+        # Slack Workflows can send data in different formats
+        name = None
+        email = None
         
-        # Parse name and email from text
-        name, email = parse_name_email(text)
+        # Try different possible field names from Slack Workflow
+        if 'name' in data and 'email' in data:
+            # Direct field mapping
+            name = data.get('name', '').strip()
+            email = data.get('email', '').strip()
+        elif 'full_name' in data and 'email_address' in data:
+            # Alternative field names
+            name = data.get('full_name', '').strip()
+            email = data.get('email_address', '').strip()
+        elif 'text' in data:
+            # Fallback to text parsing
+            text = data.get('text', '').strip()
+            name, email = parse_name_email(text)
+        elif 'payload' in data:
+            # Handle Slack workflow payload format
+            payload = data.get('payload', {})
+            name = payload.get('name', '').strip()
+            email = payload.get('email', '').strip()
         
+        # Validate we have both name and email
         if not name or not email:
-            log_request("INVALID_FORMAT", f"Text: {text}")
-            return jsonify({"error": "Invalid format. Expected: 'John Doe john@example.com'"}), 400
+            log_request("MISSING_DATA", f"Name: {name}, Email: {email}")
+            return jsonify({
+                "error": "Missing required fields. Expected 'name' and 'email' fields.",
+                "received_data": data
+            }), 400
         
         # Validate email format
         if not validate_email_format(email):
@@ -211,7 +231,11 @@ def webhook():
         if send_email(name, email):
             success_message = f"✅ Onboarding email sent to {name} ({email})"
             log_request("WEBHOOK_SUCCESS", f"Email sent to {name} ({email})")
-            return jsonify({"message": success_message})
+            return jsonify({
+                "status": "success",
+                "message": success_message,
+                "recipient": {"name": name, "email": email}
+            })
         else:
             log_request("WEBHOOK_FAILED", f"Email send failed for {name} ({email})")
             return jsonify({"error": f"Failed to send email to {name} ({email})"}), 500
