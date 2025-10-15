@@ -101,13 +101,14 @@ def verify_slack_request(request_data, timestamp, signature):
     return hmac.compare_digest(expected_signature, signature)
 
 
-def parse_name_email(text):
+def parse_slack_message(text):
     """
-    Parse the text parameter to extract name and email.
+    Parse the text parameter to extract name, email, and package details.
     Handles both plain text and Slack's mailto format.
+    Expected format: @bot John Doe john@example.com Premium Package
     """
     if not text or not text.strip():
-        return None, None
+        return None, None, None
     
     # Remove bot mention from text first
     mention_pattern = r'<@[A-Z0-9]+>\s*'
@@ -119,33 +120,48 @@ def parse_name_email(text):
     
     if mailto_match:
         email = mailto_match.group(1)
-        # Remove the mailto part to get the name
-        name_text = re.sub(mailto_pattern, '', clean_text).strip()
-        name = name_text if name_text else None
-        return name, email
+        # Remove the mailto part to get the remaining text
+        remaining_text = re.sub(mailto_pattern, '', clean_text).strip()
+        
+        # Split remaining text to get name and package
+        parts = remaining_text.split()
+        if len(parts) >= 1:
+            # First part(s) are the name, rest is package
+            name = parts[0] if len(parts) == 1 else ' '.join(parts[:-1])
+            package = parts[-1] if len(parts) > 1 else None
+        else:
+            name = None
+            package = None
+        
+        return name, email, package
     
     # Fallback to original parsing for plain text
     parts = clean_text.split()
     
     if len(parts) < 2:
-        return None, None
+        return None, None, None
     
-    # Find the email (last part that looks like an email)
+    # Find the email (part that looks like an email)
     email = None
-    name_parts = []
+    email_index = -1
     
-    for part in reversed(parts):
+    for i, part in enumerate(parts):
         if '@' in part and '.' in part:
             email = part
+            email_index = i
             break
-        name_parts.insert(0, part)
     
     if not email:
-        return None, None
+        return None, None, None
+    
+    # Everything before email is name, everything after is package
+    name_parts = parts[:email_index]
+    package_parts = parts[email_index + 1:]
     
     name = ' '.join(name_parts) if name_parts else None
+    package = ' '.join(package_parts) if package_parts else None
     
-    return name, email
+    return name, email, package
 
 
 def validate_email_format(email):
@@ -159,24 +175,26 @@ def validate_email_format(email):
         return False
 
 
-def send_email(name, email):
+def send_email(name, email, package=None):
     """
     Send onboarding email via Gmail SMTP with multiple port attempts.
     """
     try:
-        log_request("SENDING_EMAIL", f"To: {name} ({email})")
-        print(f"DEBUG: Starting email send to {name} ({email})")
+        log_request("SENDING_EMAIL", f"To: {name} ({email}), Package: {package}")
+        print(f"DEBUG: Starting email send to {name} ({email}), Package: {package}")
         
         # Create message
         msg = MIMEMultipart()
         msg['From'] = GMAIL_USER
         msg['To'] = email
-        msg['Subject'] = "Welcome to [Your Company Name]!"
+        msg['Subject'] = "Welcome to SpringWorks"
         
         # Email body
         body = f"""Hi {name},
 
 Welcome aboard! We're thrilled to have you with us.
+
+{f"Your package ({package}) is active!" if package else "Your account is now active!"}
 
 Feel free to reach out if you need any help getting started.
 
@@ -325,11 +343,11 @@ def events():
                 
                 log_request("BOT_MENTIONED", f"Text: {text}, User: {user}, Channel: {channel}")
                 
-                # Parse name and email (mention removal is handled in parse_name_email)
-                name, email = parse_name_email(text)
+                # Parse name, email, and package details
+                name, email, package = parse_slack_message(text)
                 
                 if not name or not email:
-                    response_text = "❌ Invalid format. Please use: `@onboarding-bot John Doe john@example.com`"
+                    response_text = "❌ Invalid format. Please use: `@onboarding-bot John Doe john@example.com Premium Package`"
                     send_slack_message(channel, response_text)
                     return jsonify({"status": "ok"})
                 
@@ -340,8 +358,9 @@ def events():
                     return jsonify({"status": "ok"})
                 
                 # Send onboarding email
-                if send_email(name, email):
-                    response_text = f"✅ Onboarding email sent to {name} ({email})"
+                if send_email(name, email, package):
+                    package_text = f" with {package} package" if package else ""
+                    response_text = f"✅ Onboarding email sent to {name} ({email}){package_text}"
                     send_slack_message(channel, response_text)
                 else:
                     response_text = f"❌ Failed to send email to {name} ({email}). Please try again or contact support."
