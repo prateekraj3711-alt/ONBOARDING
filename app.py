@@ -58,6 +58,10 @@ if not all([GMAIL_USER, GMAIL_PASS, SLACK_BOT_TOKEN, SLACK_SIGNING_SECRET]):
 # SMTP connection pool for better concurrency handling
 smtp_lock = threading.Lock()
 
+# Track processed events to prevent duplicates
+processed_events = set()
+event_lock = threading.Lock()
+
 
 def log_request(action, details=""):
     """
@@ -303,6 +307,21 @@ def events():
                 text = event.get('text', '')
                 channel = event.get('channel')
                 user = event.get('user')
+                event_ts = event.get('ts')  # Slack timestamp for uniqueness
+                
+                # Create unique event identifier
+                event_id = f"{channel}_{user}_{event_ts}_{hash(text)}"
+                
+                # Check for duplicate events
+                with event_lock:
+                    if event_id in processed_events:
+                        log_request("DUPLICATE_EVENT_IGNORED", f"Event ID: {event_id}")
+                        return jsonify({"status": "ok"})
+                    processed_events.add(event_id)
+                    
+                    # Clean up old events (keep only last 100)
+                    if len(processed_events) > 100:
+                        processed_events.clear()
                 
                 log_request("BOT_MENTIONED", f"Text: {text}, User: {user}, Channel: {channel}")
                 
