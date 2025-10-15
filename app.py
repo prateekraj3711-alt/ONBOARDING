@@ -228,6 +228,11 @@ def onboard():
     Expects form data with 'text' parameter containing "name email"
     Supports multiple concurrent users with unlimited requests per user.
     """
+    print("DEBUG: /onboard endpoint called")
+    print(f"DEBUG: Request method: {request.method}")
+    print(f"DEBUG: Request headers: {dict(request.headers)}")
+    print(f"DEBUG: Request data: {request.get_data()}")
+    
     user_name = "unknown"
     try:
         # Get request data
@@ -338,6 +343,13 @@ if __name__ == '__main__':
     print(f"🔒 Thread-safe SMTP: ✅ Enabled")
     print("=" * 60)
     print("Ready to handle multiple concurrent users!")
+    print("=" * 60)
+    
+    # Debug environment variables
+    print("DEBUG: Environment variables check:")
+    print(f"DEBUG: GMAIL_USER set: {bool(GMAIL_USER)}")
+    print(f"DEBUG: GMAIL_PASS set: {bool(GMAIL_PASS)}")
+    print(f"DEBUG: SLACK_SIGNING_SECRET set: {bool(SLACK_SIGNING_SECRET)}")
     print("=" * 60)
     
     app.run(host='0.0.0.0', port=PORT, debug=True, threaded=True)
