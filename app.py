@@ -110,41 +110,57 @@ def parse_slack_message(text):
     Plain format: @bot John Doe john@example.com Premium Package
     """
     if not text or not text.strip():
-        return None, None, None, None, None, None
+        return None, None, None, None, None, None, None
     
     # Remove bot mention from text first
     mention_pattern = r'<@[A-Z0-9]+>\s*'
     clean_text = re.sub(mention_pattern, '', text).strip()
     
-    # Check if this is a workflow format (contains bullet points with **Customer:**, **CSM:**, etc.)
-    workflow_pattern = r'\*\*Customer:\*\*\s*([^\n\r*]+)'
+    # Check if this is a workflow format (contains "Customer:", "CSM:", etc.)
+    workflow_pattern = r'Customer:\s*([^\n\r]+)'
     customer_match = re.search(workflow_pattern, clean_text, re.IGNORECASE)
     
     if customer_match:
         # This is a workflow format, extract all details
-        customer = customer_match.group(1).strip()
+        customer_line = customer_match.group(1).strip()
+        
+        # Extract customer name and email from the customer line
+        # Format: "Prateek Raj - <mailto:Prateek.raj@springworks.in|Prateek.raj@springworks.in>"
+        customer_name = None
+        customer_email = None
+        
+        # Check if there's a mailto link
+        mailto_pattern = r'<mailto:([^|>]+)\|[^>]+>'
+        mailto_match = re.search(mailto_pattern, customer_line)
+        if mailto_match:
+            customer_email = mailto_match.group(1)
+            # Extract name before the mailto
+            name_part = re.sub(mailto_pattern, '', customer_line).strip()
+            customer_name = name_part.replace(' -', '').strip()
+        else:
+            customer_name = customer_line
         
         # Extract CSM
-        csm_pattern = r'\*\*CSM[^:]*:\*\*\s*([^\n\r*]+)'
+        csm_pattern = r'CSM:\s*([^\n\r]+)'
         csm_match = re.search(csm_pattern, clean_text, re.IGNORECASE)
         csm = csm_match.group(1).strip() if csm_match else None
         
         # Extract CSA
-        csa_pattern = r'\*\*CSA[^:]*:\*\*\s*([^\n\r*]+)'
+        csa_pattern = r'CSA:\s*([^\n\r]+)'
         csa_match = re.search(csa_pattern, clean_text, re.IGNORECASE)
         csa = csa_match.group(1).strip() if csa_match else None
         
         # Extract Date
-        date_pattern = r'\*\*Date[^:]*:\*\*\s*([^\n\r*]+)'
+        date_pattern = r'Date[^:]*:\s*([^\n\r]+)'
         date_match = re.search(date_pattern, clean_text, re.IGNORECASE)
         date = date_match.group(1).strip() if date_match else None
         
         # Extract Granola link
-        granola_pattern = r'\*\*Granola[^:]*:\*\*\s*([^\n\r*]+)'
+        granola_pattern = r'Granola[^:]*:\s*([^\n\r]+)'
         granola_match = re.search(granola_pattern, clean_text, re.IGNORECASE)
         granola = granola_match.group(1).strip() if granola_match else None
         
-        return customer, None, None, csm, csa, date, granola
+        return customer_name, customer_email, None, csm, csa, date, granola
     
     # Handle Slack's mailto format: <mailto:email@domain.com|email@domain.com>
     mailto_pattern = r'<mailto:([^|>]+)\|[^>]+>'
@@ -603,13 +619,17 @@ def events():
                 name, email, package, customer, csm, csa, date, granola = parse_slack_message(text)
                 print(f"DEBUG: Parsed - Name: '{name}', Email: '{email}', Package: '{package}', Customer: '{customer}', CSM: '{csm}', CSA: '{csa}', Date: '{date}', Granola: '{granola}'")
                 
-                # Check if this is a workflow format (has customer but no email)
-                if customer and not email:
-                    # This is a workflow format - we need to determine the email
-                    # For now, we'll use a default email or ask for it
-                    response_text = f"✅ Workflow details extracted for {customer}!\n\nCSM: {csm}\nCSA: {csa}\nDate: {date}\nGranola: {granola}\n\nPlease provide the customer email to send the onboarding email."
-                    send_slack_message(channel, response_text)
-                    return jsonify({"status": "ok"})
+                # Check if this is a workflow format (has customer)
+                if customer:
+                    # This is a workflow format
+                    if email:
+                        # We have both customer and email, send the email directly
+                        pass  # Continue to email sending
+                    else:
+                        # We have customer but no email, ask for email
+                        response_text = f"✅ Workflow details extracted for {customer}!\n\nCSM: {csm}\nCSA: {csa}\nDate: {date}\nGranola: {granola}\n\nPlease provide the customer email to send the onboarding email."
+                        send_slack_message(channel, response_text)
+                        return jsonify({"status": "ok"})
                 
                 # Clean up name if it contains unwanted text
                 if name and ("Client email" in name or "Package details" in name):
