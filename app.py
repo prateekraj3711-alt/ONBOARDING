@@ -103,16 +103,48 @@ def verify_slack_request(request_data, timestamp, signature):
 
 def parse_slack_message(text):
     """
-    Parse the text parameter to extract name, email, and package details.
-    Handles both plain text and Slack's mailto format.
-    Expected format: @bot John Doe john@example.com Premium Package
+    Parse the text parameter to extract workflow details or name, email, and package details.
+    Handles both workflow format and plain text/mailto format.
+    
+    Workflow format: Customer, CSM, CSA, Date, Granola link
+    Plain format: @bot John Doe john@example.com Premium Package
     """
     if not text or not text.strip():
-        return None, None, None
+        return None, None, None, None, None, None
     
     # Remove bot mention from text first
     mention_pattern = r'<@[A-Z0-9]+>\s*'
     clean_text = re.sub(mention_pattern, '', text).strip()
+    
+    # Check if this is a workflow format (contains bullet points with **Customer:**, **CSM:**, etc.)
+    workflow_pattern = r'\*\*Customer:\*\*\s*([^\n\r*]+)'
+    customer_match = re.search(workflow_pattern, clean_text, re.IGNORECASE)
+    
+    if customer_match:
+        # This is a workflow format, extract all details
+        customer = customer_match.group(1).strip()
+        
+        # Extract CSM
+        csm_pattern = r'\*\*CSM[^:]*:\*\*\s*([^\n\r*]+)'
+        csm_match = re.search(csm_pattern, clean_text, re.IGNORECASE)
+        csm = csm_match.group(1).strip() if csm_match else None
+        
+        # Extract CSA
+        csa_pattern = r'\*\*CSA[^:]*:\*\*\s*([^\n\r*]+)'
+        csa_match = re.search(csa_pattern, clean_text, re.IGNORECASE)
+        csa = csa_match.group(1).strip() if csa_match else None
+        
+        # Extract Date
+        date_pattern = r'\*\*Date[^:]*:\*\*\s*([^\n\r*]+)'
+        date_match = re.search(date_pattern, clean_text, re.IGNORECASE)
+        date = date_match.group(1).strip() if date_match else None
+        
+        # Extract Granola link
+        granola_pattern = r'\*\*Granola[^:]*:\*\*\s*([^\n\r*]+)'
+        granola_match = re.search(granola_pattern, clean_text, re.IGNORECASE)
+        granola = granola_match.group(1).strip() if granola_match else None
+        
+        return customer, None, None, csm, csa, date, granola
     
     # Handle Slack's mailto format: <mailto:email@domain.com|email@domain.com>
     mailto_pattern = r'<mailto:([^|>]+)\|[^>]+>'
@@ -133,13 +165,13 @@ def parse_slack_message(text):
             name = None
             package = None
         
-        return name, email, package
+        return name, email, package, None, None, None, None
     
     # Fallback to original parsing for plain text
     parts = clean_text.split()
     
     if len(parts) < 2:
-        return None, None, None
+        return None, None, None, None, None, None, None
     
     # Find the email (part that looks like an email)
     email = None
@@ -152,7 +184,7 @@ def parse_slack_message(text):
             break
     
     if not email:
-        return None, None, None
+        return None, None, None, None, None, None, None
     
     # Everything before email is name, everything after is package
     name_parts = parts[:email_index]
@@ -161,7 +193,7 @@ def parse_slack_message(text):
     name = ' '.join(name_parts) if name_parts else None
     package = ' '.join(package_parts) if package_parts else None
     
-    return name, email, package
+    return name, email, package, None, None, None, None
 
 
 def validate_email_format(email):
@@ -175,7 +207,7 @@ def validate_email_format(email):
         return False
 
 
-def send_email(name, email, package=None):
+def send_email(name, email, package=None, customer=None, csm=None, csa=None, date=None, granola=None):
     """
     Send onboarding email via Gmail SMTP with multiple port attempts.
     """
@@ -189,15 +221,88 @@ def send_email(name, email, package=None):
         msg['To'] = email
         msg['Subject'] = "Welcome to SpringWorks"
         
-        # Email body - start directly with welcome message
-        body = f"""Welcome aboard! We're thrilled to have you with us.
+        # Email body - SpringVerify onboarding template
+        # Determine greeting name
+        greeting_name = customer if customer else name
+        
+        # Determine CSM details
+        csm_name = csm if csm else "Derishti"
+        csm_email = "derishti.dogra@springworks.in"  # Default CSM email
+        csm_phone = "+919501291354"  # Default CSM phone
+        
+        # Determine CSA details  
+        csa_name = csa if csa else "Derishti Dogra"
+        csa_email = "derishti.dogra@springworks.in"  # Default CSA email
+        csa_phone = "+919501291354"  # Default CSA phone
+        
+        # Determine package details
+        package_info = f"Custom Verifier 1: {package}" if package else "Custom Verifier 1:"
+        
+        # Add onboarding date if available
+        date_info = f"\nOnboarding Date: {date}" if date else ""
+        
+        # Add Granola link if available
+        granola_info = f"\nGranola Link: {granola}" if granola else ""
+        
+        body = f"""Hello {greeting_name},
 
-{f"Your package ({package}) is active!" if package else "Your account is now active!"}
+It was great connecting with you earlier today! Welcome Aboard✨ 
 
-Feel free to reach out if you need any help getting started.
+Please meet your Customer Success Manager {csm_name}, who will be your main point of contact moving forward. {csm_name}, will handhold you through the further process, and you can always reach out to her and the support team for any queries. She is looped into this email for your convenience.
 
-Best,
-The Team"""
+Here's a quick summary of our discussion earlier FYR: 
+
+Support and Escalations:
+Primary POC Support: For any queries please reach out to cs@springverify.com/ 08047190155/ WhatsApp: 8971814318
+Secondary POC(CSA):    {csa_name}, {csa_email}, {csa_phone}
+CSM contact details:    {csm_name}, {csm_email}, {csm_phone}
+Escalation Matrix: Soumabrata - Head of Customer Success, soumabrata.chatterjee@springworks.in
+
+Package Details:
+{package_info}
+Identity Check
+Court Check
+Employment Check (Last 2){date_info}{granola_info}
+
+Points to note
+For any queries related to the dashboard, you can refer to our knowledge base from here: SpringVerify knowledge base
+The consent letter will be signed by the candidate digitally as a part of the BGV form sent.
+Please check this sheet to check the format for uploading candidates in bulk.
+You can share this step-by-step guide with candidates which will help them in filling the form more easily.
+For digital address verification, candidates can refer to this tutorial to understand the process.
+All the insufficiency related communication will be made to the candidate directly keeping you marked in cc.
+
+Documents Required
+ID -  PAN / Voter ID / DL (PAN preferable)
+Address & Court -  Aadhaar / Passport / Voter ID / DL
+Employment -  Experience Letter / Relieving Letter 
+Education - Degree certificate, Marksheets
+(A comprehensive list of all acceptable documents can be found here for your reference)
+
+TAT 
+ID - 1 working day
+Address - 2-14 working days (Depending upon the candidate)
+Court Verification - 1-2 working days
+Education/Employment and Reference - 7-14 working days
+World Check- 2-3 working days
+             (Please note that Insufficiency/ On hold days are not included in the overall TAT)
+
+For Education and Employment Verifications there may be additional charges depending on the university/company we reach out to. It would be collected after your approval and the payment receipt will be added to the report shared.
+For International Verifications, there will be a standard charge of INR 1500 applied for each International check.
+For Current Employment, the candidate can mention in the BGV form directly that they are still working there. Once they specify it, the verification automatically goes on hold until the candidate/you confirm us that they've left the organization effectively, so we can reach out to them for the employment verification.
+
+Few important Links for your reference.
+Knowledge Base Document link
+Check wise statuses - Definition and Color codes Link
+Step-By-Step guide for candidates
+
+Hope this helps. Please let me know if you have any questions and I'll be happy to help!
+
+Regards!
+Panchalee Roy
+Ph : 9742089120
+Give us Feedback! 
+Customer Onboarding Specialist at SpringVerify | Springworks"""
         
         msg.attach(MIMEText(body, 'plain'))
         print(f"DEBUG: Email message created")
@@ -279,19 +384,66 @@ def send_standard_onboarding_email():
         msg['To'] = default_email
         msg['Subject'] = "Welcome to SpringWorks - New Member Onboarded"
         
-        # Email body
-        body = f"""Hi Team,
+        # Email body - SpringVerify onboarding template
+        body = f"""Hello Team,
 
-A new team member has been successfully onboarded!
+A new member has been successfully onboarded! Welcome Aboard✨ 
 
-Welcome aboard! We're thrilled to have them with us.
+Please meet your Customer Success Manager Derishti, who will be your main point of contact moving forward. Derishti, will handhold you through the further process, and you can always reach out to her and the support team for any queries. She is looped into this email for your convenience.
 
-Their package ({default_package}) is active!
+Here's a quick summary of our discussion earlier FYR: 
 
-Please ensure they have access to all necessary systems and resources.
+Support and Escalations:
+Primary POC Support: For any queries please reach out to cs@springverify.com/ 08047190155/ WhatsApp: 8971814318
+Secondary POC(CSA):    Derishti Dogra, derishti.dogra@springworks.in , +919501291354
+CSM contact details:    Rinki Singh, rinki.singh@springworks.in , +918527953919
+Escalation Matrix: Soumabrata - Head of Customer Success, soumabrata.chatterjee@springworks.in
 
-Best,
-The SpringWorks Team"""
+Package Details:
+Custom Verifier 1: {default_package}
+Identity Check
+Court Check
+Employment Check (Last 2)
+
+Points to note
+For any queries related to the dashboard, you can refer to our knowledge base from here: SpringVerify knowledge base
+The consent letter will be signed by the candidate digitally as a part of the BGV form sent.
+Please check this sheet to check the format for uploading candidates in bulk.
+You can share this step-by-step guide with candidates which will help them in filling the form more easily.
+For digital address verification, candidates can refer to this tutorial to understand the process.
+All the insufficiency related communication will be made to the candidate directly keeping you marked in cc.
+
+Documents Required
+ID -  PAN / Voter ID / DL (PAN preferable)
+Address & Court -  Aadhaar / Passport / Voter ID / DL
+Employment -  Experience Letter / Relieving Letter 
+Education - Degree certificate, Marksheets
+(A comprehensive list of all acceptable documents can be found here for your reference)
+
+TAT 
+ID - 1 working day
+Address - 2-14 working days (Depending upon the candidate)
+Court Verification - 1-2 working days
+Education/Employment and Reference - 7-14 working days
+World Check- 2-3 working days
+             (Please note that Insufficiency/ On hold days are not included in the overall TAT)
+
+For Education and Employment Verifications there may be additional charges depending on the university/company we reach out to. It would be collected after your approval and the payment receipt will be added to the report shared.
+For International Verifications, there will be a standard charge of INR 1500 applied for each International check.
+For Current Employment, the candidate can mention in the BGV form directly that they are still working there. Once they specify it, the verification automatically goes on hold until the candidate/you confirm us that they've left the organization effectively, so we can reach out to them for the employment verification.
+
+Few important Links for your reference.
+Knowledge Base Document link
+Check wise statuses - Definition and Color codes Link
+Step-By-Step guide for candidates
+
+Hope this helps. Please let me know if you have any questions and I'll be happy to help!
+
+Regards!
+Panchalee Roy
+Ph : 9742089120
+Give us Feedback! 
+Customer Onboarding Specialist at SpringVerify | Springworks"""
         
         msg.attach(MIMEText(body, 'plain'))
         print(f"DEBUG: Standard email message created")
@@ -447,9 +599,17 @@ def events():
                         send_slack_message(channel, response_text)
                     return jsonify({"status": "ok"})
                 
-                # Parse name, email, and package details for custom messages
-                name, email, package = parse_slack_message(text)
-                print(f"DEBUG: Parsed - Name: '{name}', Email: '{email}', Package: '{package}'")
+                # Parse workflow details or name, email, and package details
+                name, email, package, customer, csm, csa, date, granola = parse_slack_message(text)
+                print(f"DEBUG: Parsed - Name: '{name}', Email: '{email}', Package: '{package}', Customer: '{customer}', CSM: '{csm}', CSA: '{csa}', Date: '{date}', Granola: '{granola}'")
+                
+                # Check if this is a workflow format (has customer but no email)
+                if customer and not email:
+                    # This is a workflow format - we need to determine the email
+                    # For now, we'll use a default email or ask for it
+                    response_text = f"✅ Workflow details extracted for {customer}!\n\nCSM: {csm}\nCSA: {csa}\nDate: {date}\nGranola: {granola}\n\nPlease provide the customer email to send the onboarding email."
+                    send_slack_message(channel, response_text)
+                    return jsonify({"status": "ok"})
                 
                 # Clean up name if it contains unwanted text
                 if name and ("Client email" in name or "Package details" in name):
@@ -457,7 +617,7 @@ def events():
                     name = "New Member"
                 
                 if not name or not email:
-                    response_text = "❌ Invalid format. Please use: `@onboarding-bot - onboarded` or `@onboarding-bot John Doe john@example.com Premium Package`"
+                    response_text = "❌ Invalid format. Please use: `@onboarding-bot - onboarded` or `@onboarding-bot John Doe john@example.com Premium Package` or paste the workflow details"
                     send_slack_message(channel, response_text)
                     return jsonify({"status": "ok"})
                 
@@ -467,13 +627,14 @@ def events():
                     send_slack_message(channel, response_text)
                     return jsonify({"status": "ok"})
                 
-                # Send onboarding email
-                if send_email(name, email, package):
-                    package_text = f" with {package} package" if package else ""
-                    response_text = f"✅ Onboarding email sent to {name} ({email}){package_text}"
+                # Send email with workflow details
+                if send_email(name, email, package, customer, csm, csa, date, granola):
+                    greeting_name = customer if customer else name
+                    response_text = f"✅ Onboarding email sent to {greeting_name} ({email})!"
                     send_slack_message(channel, response_text)
                 else:
-                    response_text = f"❌ Failed to send email to {name} ({email}). Please try again or contact support."
+                    greeting_name = customer if customer else name
+                    response_text = f"❌ Failed to send email to {greeting_name} ({email}). Please try again or contact support."
                     send_slack_message(channel, response_text)
         
         return jsonify({"status": "ok"})
