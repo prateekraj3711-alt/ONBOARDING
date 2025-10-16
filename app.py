@@ -176,55 +176,55 @@ def send_email(name, email, package=None, customer=None, csm=None, csa=None, dat
 
         body = f"""Hello {greeting_name},<br><br>
 
-It was great connecting with you earlier today! Welcome Aboard✨<br><br>
+It was great connecting with you earlier today! Welcome Aboard ✨<br><br>
 
 Please meet your Customer Success Manager {csm_name}, who will be your main point of contact moving forward. {csm_name}, will handhold you through the further process, and you can always reach out to her and the support team for any queries. She is looped into this email for your convenience.<br><br>
 
 Here's a quick summary of our discussion earlier FYR:<br><br>
 
 <strong>Support and Escalations:</strong><br>
-Primary POC Support: For any queries please reach out to cs@springverify.com/ 08047190155/ WhatsApp: 8971814318<br>
-Secondary POC(CSA):    {csa_name}, {csa_email}, {csa_phone}<br>
-CSM contact details:    {csm_name}, {csm_email}, {csm_phone}<br>
-Escalation Matrix: Soumabrata - Head of Customer Success, soumabrata.chatterjee@springworks.in<br><br>
+• Primary POC Support: For any queries please reach out to <a href="mailto:cs@springverify.com">cs@springverify.com</a>/ 08047190155/ WhatsApp: 8971814318<br>
+• Secondary POC(CSA): {csa_name}, <a href="mailto:{csa_email}">{csa_email}</a>, {csa_phone}<br>
+• CSM contact details: {csm_name}, <a href="mailto:{csm_email}">{csm_email}</a>, {csm_phone}<br>
+• Escalation Matrix: Soumabrata - Head of Customer Success, <a href="mailto:soumabrata.chatterjee@springworks.in">soumabrata.chatterjee@springworks.in</a><br><br>
 
 <strong>Package Details:</strong><br>
-{package_info}<br>
-Identity Check<br>
-Court Check<br>
-Employment Check (Last 2){date_info}{granola_info}<br><br>
+• {package_info}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;◦ Identity Check<br>
+&nbsp;&nbsp;&nbsp;&nbsp;◦ Court Check<br>
+&nbsp;&nbsp;&nbsp;&nbsp;◦ Employment Check (Last 2){date_info}{granola_info}<br><br>
 
 <strong>Points to note</strong><br>
-For any queries related to the dashboard, you can refer to our knowledge base from here: <a href="https://support.springworks.in/portal/en/kb/springverify/client-knowledge-base">SpringVerify knowledge base</a><br>
-The consent letter will be signed by the candidate digitally as a part of the BGV form sent.<br>
-Please check <a href="https://docs.google.com/spreadsheets/d/1uKXkkTKONgk2heg9BqzkKg1ycnv-PPcNkGSlNQCS1Bc/edit?gid=0#gid=0">this sheet</a> to check the format for uploading candidates in bulk.<br>
-You can share <a href="https://springworks.fleeq.io/l/ko1qgfu036-7ehmd3znyo">this step-by-step guide</a> with candidates which will help them in filling the form more easily.<br>
-For digital address verification, candidates can refer to <a href="https://support.springworks.in/portal/en/kb/articles/dav-digital-address-verification-guidelines-and-faq">this tutorial</a> to understand the process.<br>
-All the insufficiency related communication will be made to the candidate directly keeping you marked in cc.<br><br>
+• For any queries related to the dashboard, you can refer to our knowledge base from here: <a href="https://support.springworks.in/portal/en/kb/springverify/client-knowledge-base">SpringVerify knowledge base</a><br>
+• The consent letter will be signed by the candidate digitally as a part of the BGV form sent.<br>
+• Please check <a href="https://docs.google.com/spreadsheets/d/1uKXkkTKONgk2heg9BqzkKg1ycnv-PPcNkGSlNQCS1Bc/edit?gid=0#gid=0">this sheet</a> to check the format for uploading candidates in bulk.<br>
+• You can share <a href="https://springworks.fleeq.io/l/ko1qgfu036-7ehmd3znyo">this step-by-step guide</a> with candidates which will help them in filling the form more easily.<br>
+• For digital address verification, candidates can refer to <a href="https://support.springworks.in/portal/en/kb/articles/dav-digital-address-verification-guidelines-and-faq">this tutorial</a> to understand the process.<br>
+• All the insufficiency related communication will be made to the candidate directly keeping you marked in cc.<br><br>
 
 <strong>Documents Required</strong><br>
-ID -  PAN / Voter ID / DL (PAN preferable)<br>
-Address & Court -  Aadhaar / Passport / Voter ID / DL<br>
-Employment -  Experience Letter / Relieving Letter<br>
-Education - Degree certificate, Marksheets<br>
-(A comprehensive list of all acceptable documents can be found <a href="https://docs.google.com/document/d/12-IeWLhL_bIxqNxZODbymi6_mIBhkd0ouhY0sNX_4jY/edit?tab=t.0#heading=h.d6rqdchpcvka">here</a> for your reference)<br><br>
+• ID - PAN / Voter ID / DL (PAN preferable)<br>
+• Address & Court - Aadhaar / Passport / Voter ID / DL<br>
+• Employment - Experience Letter / Relieving Letter<br>
+• Education - Degree certificate, Marksheets<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(A comprehensive list of all acceptable documents can be found <a href="https://docs.google.com/document/d/12-IeWLhL_bIxqNxZODbymi6_mIBhkd0ouhY0sNX_4jY/edit?tab=t.0#heading=h.d6rqdchpcvka">here</a> for your reference)<br><br>
 
 <strong>TAT</strong><br>
-ID - 1 working day<br>
-Address - 2-14 working days (Depending upon the candidate)<br>
-Court Verification - 1-2 working days<br>
-Education/Employment and Reference - 7-14 working days<br>
-World Check- 2-3 working days<br>
-             (Please note that Insufficiency/ On hold days are not included in the overall TAT)<br><br>
+• ID - 1 working day<br>
+• Address - 2-14 working days (Depending upon the candidate)<br>
+• Court Verification - 1-2 working days<br>
+• Education/Employment and Reference - 7-14 working days<br>
+• World Check - 2-3 working days<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(Please note that Insufficiency/ On hold days are not included in the overall TAT)<br><br>
 
-For Education and Employment Verifications there may be additional charges depending on the university/company we reach out to. It would be collected after your approval and the payment receipt will be added to the report shared.<br>
-For International Verifications, there will be a standard charge of INR 1500 applied for each International check.<br>
-For Current Employment, the candidate can mention in the BGV form directly that they are still working there. Once they specify it, the verification automatically goes on hold until the candidate/you confirm us that they've left the organization effectively, so we can reach out to them for the employment verification.<br><br>
+• For Education and Employment Verifications there may be additional charges depending on the university/company we reach out to. It would be collected after your approval and the payment receipt will be added to the report shared.<br>
+• For International Verifications, there will be a standard charge of INR 1500 applied for each International check.<br>
+• For Current Employment, the candidate can mention in the BGV form directly that they are still working there. Once they specify it, the verification automatically goes on hold until the candidate/you confirm us that they've left the organization effectively, so we can reach out to them for the employment verification.<br><br>
 
 <strong>Few important Links for your reference.</strong><br>
-<a href="https://support.springworks.in/portal/en/kb/springverify/client-knowledge-base">Knowledge Base Document link</a><br>
-<a href="https://support.springworks.in/portal/en/kb/articles/check-wise-status-definition-and-color-codes">Check wise statuses - Definition and Color codes Link</a><br>
-<a href="https://springworks.fleeq.io/l/ko1qgfu036-7ehmd3znyo">Step-By-Step guide for candidates</a><br><br>
+• <a href="https://support.springworks.in/portal/en/kb/springverify/client-knowledge-base">Knowledge Base Document link</a><br>
+• <a href="https://support.springworks.in/portal/en/kb/articles/check-wise-status-definition-and-color-codes">Check wise statuses - Definition and Color codes Link</a><br>
+• <a href="https://springworks.fleeq.io/l/ko1qgfu036-7ehmd3znyo">Step-By-Step guide for candidates</a><br><br>
 
 Hope this helps. Please let me know if you have any questions and I'll be happy to help!<br><br>
 
